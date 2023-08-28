@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+
+# ======================================
+# ========== Global Variables ==========
+# ======================================
+# Save arguments for functions
+arguments=("$@")
+arguments_total="$#"
+
+
+# ======================================
+# ============= Functions ==============
+# ======================================
+Variables () {
+	# Input
+	input=$1
+	input_name="$(basename "${1%.*}")"
+	#input_name="$(basename -- $1)"
+	input_folder="${1%/*}"
+	
+	#echo Input
+	#echo $input
+	#echo $input_name
+	#echo $input_folder
+	
+	# Output
+	output_folder="/media/windows/Users/Gerardi/Documents/Any Video Converter/DVD_NTSC"
+	output_name=$input_name
+	output="$output_folder/$output_name"
+	
+	#echo Output
+	#echo $output_folder
+	#echo $output_name
+	#echo $output
+	
+	# Subtitles
+	subtitles="$(
+		if   [ -f "$input_folder/Subtitles/$input_name.srt" ]; then 
+			echo "$input_folder/Subtitles/$input_name.srt"
+		elif [ -f "$input_folder/subtitles/$input_name.srt" ]; then 
+			echo "$input_folder/subtitles/$input_name.srt"
+		elif [ -f "$input_folder/$input_name.srt" ]; then
+			echo "$input_folder/$input_name.srt"
+		fi
+	)"
+	subtitles_style="Fontsize=26,Outline=2,MarginV=16"
+	subtitles_charenc="$(file -bi "$subtitles" | cut -f 2 -d = || uchardet "$subtitles")"
+	
+	#echo Subtitles
+	echo $subtitles
+	#echo $subtitles_style
+	#echo $subtitles_charenc
+}
+
+Menu () {
+	echo "	Revnoc	"
+	echo "1) Convert to NTSC-DVD"
+	echo "2) Convert to Mp3"	
+	echo 
+	echo "0) Exit"
+	echo
+	read -n 3 -p "Select an option [1-2]: " option
+	echo
+
+	for (( i=0; i < $arguments_total; i++ )); do
+		Variables "${arguments[i]}"
+		
+		case $option in
+			1) Convert_Video_NTSC_DVD				;;
+			2) Convert_Audio_Mp3					;;
+			0) exit 0						;;
+			*) echo -e "\nOption no valid !" ; option='-1' ; break	;;
+		esac
+	done
+
+	echo
+}
+
+Convert_Video_NTSC_DVD () {
+	/bin/ffmpeg -hide_banner -i "$input" -target ntsc-dvd -aspect 4:3 -b:a 128k -vf subtitles="$subtitles":charenc="$subtitles_charenc":force_style="'$subtitles_style'" "$output.mpg"
+}
+
+Convert_Audio_Mp3 () {
+	/bin/ffmpeg -hide_banner -i "$input" -vn -sn -dn -ar 44100 -ac 2 -b:a 192k "$output.mp3"
+}
+
+
+# ======================================
+# =============== Main =================
+# ======================================
+if [[ arguments_total -gt 0 ]]; then
+	while : ; do
+		Menu
+	[ $option != '-1' ] && break; done
+else
+	echo "Error: You did not enter any arguments !"
+	exit 1
+fi
+
+exit 0
